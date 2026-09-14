@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.Scripting.APIUpdating;
 using UnityEngine.InputSystem;
+using UnityEditor.XR;
 
 public class PlayerController : MonoBehaviour
 {
@@ -10,9 +11,16 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float moveDirection = -1f;
     [SerializeField] private float wallSlideSpeed = 0.5f;
     [SerializeField] private float maxJumpTime = 0.5f;
-    
+
+    [SerializeField] private Sprite idleSprite;
+    [SerializeField] private Sprite firstJumpSprite;
+    [SerializeField] private Sprite secondJumpSprite;
+    [SerializeField] private SpriteRenderer spriteRenderer;
+    [SerializeField] private Transform visual;
 
     private Rigidbody2D rb;
+
+
     private float wallCheckDistance = 0.1f;
     private bool isStuckToWall;
     private bool canGrabWall;
@@ -20,6 +28,8 @@ public class PlayerController : MonoBehaviour
     private float jumpHoldTime;
     private int maxJumpCharges = 2;
     private int jumpCharges;
+    private bool isDoingFlip;
+    private float flipTimer;
     
 
     void Start()
@@ -44,6 +54,17 @@ public class PlayerController : MonoBehaviour
         if (!Keyboard.current.spaceKey.isPressed || jumpHoldTime >= maxJumpTime)
         {
             canControlJump = false;
+        }
+
+        if (isDoingFlip)
+        {
+            flipTimer += Time.deltaTime;
+
+            if (flipTimer >= 0.1f)
+            {
+                flipTimer = 0f;
+                visual.Rotate(0f, 0f, -45f);
+            }
         }
     }
 
@@ -70,8 +91,8 @@ public class PlayerController : MonoBehaviour
         Vector2 leftDirection = Vector2.left;
         Vector2 rightDirection = Vector2.right;
 
-        RaycastHit2D leftHit = Physics2D.Raycast(transform.position + Vector3.left * 0.56f, leftDirection, wallCheckDistance);
-        RaycastHit2D rightHit = Physics2D.Raycast(transform.position + Vector3.right * 0.56f, rightDirection, wallCheckDistance);
+        RaycastHit2D leftHit = Physics2D.Raycast(transform.position + Vector3.left * 0.46f, leftDirection, wallCheckDistance);
+        RaycastHit2D rightHit = Physics2D.Raycast(transform.position + Vector3.right * 0.46f, rightDirection, wallCheckDistance);
 
         if (!canGrabWall)
         {
@@ -84,6 +105,9 @@ public class PlayerController : MonoBehaviour
         if (canGrabWall && leftHit.collider != null && leftHit.collider.CompareTag("Wall"))
         {
             isStuckToWall = true;
+            isDoingFlip = false;
+            visual.localRotation = Quaternion.identity;
+            spriteRenderer.sprite = idleSprite;
             jumpCharges = maxJumpCharges;
             transform.localScale = new Vector3(1f, 1f, 1f);
         }
@@ -91,6 +115,9 @@ public class PlayerController : MonoBehaviour
         if (canGrabWall && rightHit.collider != null && rightHit.collider.CompareTag("Wall"))
         {
             isStuckToWall = true;
+            isDoingFlip = false;
+            visual.localRotation = Quaternion.identity;
+            spriteRenderer.sprite = idleSprite;
             jumpCharges = maxJumpCharges;
             transform.localScale = new Vector3(-1f, 1f, 1f);
         }
@@ -125,6 +152,17 @@ public class PlayerController : MonoBehaviour
         if (jumpCharges <= 0)
         {
             return;
+        }
+
+        if (jumpCharges == 2)
+        {
+            spriteRenderer.sprite = firstJumpSprite;
+        }
+
+        else if (jumpCharges == 1)
+        {
+            spriteRenderer.sprite = secondJumpSprite;
+            isDoingFlip = true;
         }
 
         jumpHoldTime = 0f;
