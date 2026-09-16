@@ -142,7 +142,6 @@ public class PlayerController : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Wall"))
         {
-            Debug.Log("CollisionExit: отцепился");
             isStuckToWall = false;
         }
     }
