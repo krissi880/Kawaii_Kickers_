@@ -18,6 +18,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private SpriteRenderer spriteRenderer;
     [SerializeField] private Transform visual;
 
+
+    [SerializeField] private GameObject deathPanel;
+
     private Rigidbody2D rb;
 
 
@@ -125,6 +128,12 @@ public class PlayerController : MonoBehaviour
     
     private void OnCollisionEnter2D(Collision2D collision)
     {
+        if (collision.gameObject.CompareTag("Spike"))
+        {
+            Die();
+            return;
+        }
+
         if (collision.gameObject.CompareTag("Wall"))
         {
             ContactPoint2D contact = collision.GetContact(0);
@@ -144,6 +153,13 @@ public class PlayerController : MonoBehaviour
         {
             isStuckToWall = false;
         }
+    }
+
+    private void Die()
+    {
+        rb.simulated = false;
+        gameObject.SetActive(false);
+        deathPanel.SetActive(true);
     }
 
     private void Jump()
