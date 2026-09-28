@@ -17,6 +17,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Sprite secondJumpSprite;
     [SerializeField] private SpriteRenderer spriteRenderer;
     [SerializeField] private Transform visual;
+    [SerializeField] private Camera gameCamera;
 
 
     [SerializeField] private GameObject deathPanel;
@@ -44,6 +45,13 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        float bottomY = gameCamera.transform.position.y - gameCamera.orthographicSize;
+
+        if (transform.position.y < bottomY)
+        {
+            Die();
+        }
+
         if (canControlJump && Keyboard.current.spaceKey.isPressed)
         {
             jumpHoldTime += Time.deltaTime;
@@ -94,8 +102,14 @@ public class PlayerController : MonoBehaviour
         Vector2 leftDirection = Vector2.left;
         Vector2 rightDirection = Vector2.right;
 
-        RaycastHit2D leftHit = Physics2D.Raycast(transform.position + Vector3.left * 0.46f, leftDirection, wallCheckDistance);
-        RaycastHit2D rightHit = Physics2D.Raycast(transform.position + Vector3.right * 0.46f, rightDirection, wallCheckDistance);
+        RaycastHit2D leftHit = Physics2D.Raycast(transform.position + Vector3.left * 0.5f, leftDirection, wallCheckDistance);
+        RaycastHit2D rightHit = Physics2D.Raycast(transform.position + Vector3.right * 0.5f, rightDirection, wallCheckDistance);
+
+        if (isStuckToWall && leftHit.collider == null && rightHit.collider == null)
+        {
+            isStuckToWall = false;
+        } 
+
 
         if (!canGrabWall)
         {
@@ -108,6 +122,7 @@ public class PlayerController : MonoBehaviour
         if (canGrabWall && leftHit.collider != null && leftHit.collider.CompareTag("Wall"))
         {
             isStuckToWall = true;
+            moveDirection = -1f;
             isDoingFlip = false;
             visual.localRotation = Quaternion.identity;
             spriteRenderer.sprite = idleSprite;
@@ -118,6 +133,7 @@ public class PlayerController : MonoBehaviour
         if (canGrabWall && rightHit.collider != null && rightHit.collider.CompareTag("Wall"))
         {
             isStuckToWall = true;
+            moveDirection = 1f;
             isDoingFlip = false;
             visual.localRotation = Quaternion.identity;
             spriteRenderer.sprite = idleSprite;
@@ -143,6 +159,8 @@ public class PlayerController : MonoBehaviour
             {
                 isStuckToWall = true;
                 rb.linearVelocity = Vector2.zero;
+
+    
             }
         }
     }
@@ -151,7 +169,7 @@ public class PlayerController : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Wall"))
         {
-            isStuckToWall = false;
+            
         }
     }
 
