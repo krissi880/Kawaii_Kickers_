@@ -9,6 +9,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float horizontalSpeed = 4.5f;
     [SerializeField] private float jumpForse = 6.6f;
     [SerializeField] private float moveDirection = -1f;
+    public float MoveDirection => moveDirection;
     [SerializeField] private float wallSlideSpeed = 0.5f;
     [SerializeField] private float maxJumpTime = 0.5f;
 

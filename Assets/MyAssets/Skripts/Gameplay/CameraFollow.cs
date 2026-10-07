@@ -7,19 +7,27 @@ public class CameraFollow : MonoBehaviour
     [SerializeField] private Rigidbody2D playerRb;
 
     [SerializeField] private float ySmoothSpeed = 8f;
-    [SerializeField] private float startSetY = 4.4f;
+    [SerializeField] private float startSetY = 6f;
 
-    [SerializeField] private float xSmoothSpeed = 2f;
-    [SerializeField] private float xCameraZone = 2f;
-    [SerializeField] private float xLookAhead = 4f;
+    [SerializeField] private float xSmoothSpeed = 1.7f;
+    [SerializeField] private float xCameraZone = 1.8f;
+    [SerializeField] private float xLookAhead = 3.2f;
 
     private float cameraStartY;
     private float targetX;
+    private float xVelocity;
+
+    private bool targetXLocked;
+    private float lastDirection;
+    private PlayerController playerController;
 
     void Start()
     {
         cameraStartY = player.position.y + startSetY;
         targetX = transform.position.x;
+
+        playerController = player.GetComponent<PlayerController>();
+        lastDirection = playerController.MoveDirection;
 
         transform.position = new Vector3(
             transform.position.x,
@@ -32,25 +40,44 @@ public class CameraFollow : MonoBehaviour
     {
         if (Mathf.Abs(playerRb.linearVelocity.x) < 0.01f)
         {
-            targetX = transform.position.x;
-        }
-        else if (playerRb.linearVelocity.x > 0 &&
-                 player.position.x > transform.position.x + xCameraZone)
-        {
-            targetX = player.position.x + xLookAhead;
-        }
-        else if (playerRb.linearVelocity.x < 0 &&
-                 player.position.x < transform.position.x - xCameraZone)
-        {
-            targetX = player.position.x - xLookAhead;
+            if (targetXLocked)
+            {
+                targetX = transform.position.x + (targetX - transform.position.x) * 0.2f;
+            }
+
+            targetXLocked = false;
         }
 
-        float xLerpSpeed = 1f - Mathf.Exp(-xSmoothSpeed * Time.deltaTime);
+        else
+        {
+            if (playerController.MoveDirection != lastDirection)
+            {
+                lastDirection = playerController.MoveDirection;
+                targetXLocked = false;
+            }
 
-        float newX = Mathf.Lerp(
+            if (!targetXLocked &&
+                playerController.MoveDirection > 0 &&
+                player.position.x > transform.position.x + xCameraZone)
+            {
+                targetX = player.position.x + xLookAhead;
+                targetXLocked = true;
+            }
+
+            if (!targetXLocked &&
+                playerController.MoveDirection < 0 &&
+                player.position.x < transform.position.x - xCameraZone)
+            {
+                targetX = player.position.x - xLookAhead;
+                targetXLocked = true;
+            }
+        }
+
+        float newX = Mathf.SmoothDamp(
             transform.position.x,
             targetX,
-            xLerpSpeed
+            ref xVelocity,
+            1f / xSmoothSpeed
         );
 
         float newY = transform.position.y;
