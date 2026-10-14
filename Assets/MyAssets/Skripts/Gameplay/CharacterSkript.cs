@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Scripting.APIUpdating;
 using UnityEngine.InputSystem;
 using UnityEditor.XR;
+using System.Collections;
 
 public class PlayerController : MonoBehaviour
 {
@@ -16,16 +17,19 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Sprite idleSprite;
     [SerializeField] private Sprite firstJumpSprite;
     [SerializeField] private Sprite secondJumpSprite;
+    [SerializeField] private Sprite explosionSprite;
     [SerializeField] private SpriteRenderer spriteRenderer;
     [SerializeField] private Transform visual;
     [SerializeField] private Camera gameCamera;
 
 
+    [SerializeField] private GameObject explosionPrefab;
     [SerializeField] private GameObject deathPanel;
 
     private Rigidbody2D rb;
 
 
+    private GameObject explosionInstance;
     private float wallCheckDistance = 0.1f;
     private bool isStuckToWall;
     private bool canGrabWall;
@@ -35,7 +39,8 @@ public class PlayerController : MonoBehaviour
     private int jumpCharges;
     private bool isDoingFlip;
     private float flipTimer;
-    
+    private bool isDead;
+
 
     void Start()
     {
@@ -103,8 +108,8 @@ public class PlayerController : MonoBehaviour
         Vector2 leftDirection = Vector2.left;
         Vector2 rightDirection = Vector2.right;
 
-        RaycastHit2D leftHit = Physics2D.Raycast(transform.position + Vector3.left * 0.5f, leftDirection, wallCheckDistance);
-        RaycastHit2D rightHit = Physics2D.Raycast(transform.position + Vector3.right * 0.5f, rightDirection, wallCheckDistance);
+        RaycastHit2D leftHit = Physics2D.Raycast(transform.position + Vector3.left * 0.48f, leftDirection, wallCheckDistance);
+        RaycastHit2D rightHit = Physics2D.Raycast(transform.position + Vector3.right * 0.48f, rightDirection, wallCheckDistance);
 
         if (isStuckToWall && leftHit.collider == null && rightHit.collider == null)
         {
@@ -176,7 +181,38 @@ public class PlayerController : MonoBehaviour
 
     private void Die()
     {
+        if (isDead) return;
+
+        FindFirstObjectByType<HeightScore>().SaveMaxScore();
+
+        spriteRenderer.enabled = false;
+        explosionInstance = Instantiate(explosionPrefab, visual.position, Quaternion.identity);
+
+        isDead = true;
+
+        jumpCharges = 0;
+        canControlJump = false;
+        isDoingFlip = false;
+
+        rb.linearVelocity = Vector2.zero;
         rb.simulated = false;
+
+        visual.localRotation = Quaternion.identity;
+
+        gameCamera.GetComponent<CameraFollow>().Shake(0.25f, 0.3f);
+
+        StartCoroutine(ShowDeathPanel());
+    }
+
+    private IEnumerator ShowDeathPanel()
+    {
+        yield return new WaitForSeconds(0.25f);
+
+        if (explosionInstance != null)
+        {
+            Destroy(explosionInstance);
+        }
+
         gameObject.SetActive(false);
         deathPanel.SetActive(true);
     }

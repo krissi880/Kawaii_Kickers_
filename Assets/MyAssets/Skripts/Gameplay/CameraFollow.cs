@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 public class CameraFollow : MonoBehaviour
@@ -9,25 +8,33 @@ public class CameraFollow : MonoBehaviour
     [SerializeField] private float ySmoothSpeed = 8f;
     [SerializeField] private float startSetY = 6f;
 
-    [SerializeField] private float xSmoothSpeed = 1.7f;
-    [SerializeField] private float xCameraZone = 1.8f;
-    [SerializeField] private float xLookAhead = 3.2f;
+    [SerializeField] private float xSmoothSpeed = 2f;
+    [SerializeField] private float hitPointSwitchMargin = 0.75f;
+    [SerializeField] private float hitPointSearchInterval = 0.15f;
 
     private float cameraStartY;
     private float targetX;
     private float xVelocity;
+    private float nextHitPointSearchTime;
 
-    private bool targetXLocked;
-    private float lastDirection;
-    private PlayerController playerController;
+    private Transform currentHitPoint;
+
+    private Vector3 shakeOffset;
+    private float shakeDuration;
+    private float shakeTimeRemaining;
+    private float shakeMagnitude;
+
+    public void Shake(float duration, float magnitude)
+    {
+        shakeDuration = duration;
+        shakeTimeRemaining = duration;
+        shakeMagnitude = magnitude;
+    }
 
     void Start()
     {
         cameraStartY = player.position.y + startSetY;
         targetX = transform.position.x;
-
-        playerController = player.GetComponent<PlayerController>();
-        lastDirection = playerController.MoveDirection;
 
         transform.position = new Vector3(
             transform.position.x,
@@ -38,39 +45,14 @@ public class CameraFollow : MonoBehaviour
 
     void LateUpdate()
     {
-        if (Mathf.Abs(playerRb.linearVelocity.x) < 0.01f)
+        transform.position -= shakeOffset;
+        shakeOffset = Vector3.zero;
+
+        if (Time.time >= nextHitPointSearchTime)
         {
-            if (targetXLocked)
-            {
-                targetX = transform.position.x + (targetX - transform.position.x) * 0.2f;
-            }
-
-            targetXLocked = false;
-        }
-
-        else
-        {
-            if (playerController.MoveDirection != lastDirection)
-            {
-                lastDirection = playerController.MoveDirection;
-                targetXLocked = false;
-            }
-
-            if (!targetXLocked &&
-                playerController.MoveDirection > 0 &&
-                player.position.x > transform.position.x + xCameraZone)
-            {
-                targetX = player.position.x + xLookAhead;
-                targetXLocked = true;
-            }
-
-            if (!targetXLocked &&
-                playerController.MoveDirection < 0 &&
-                player.position.x < transform.position.x - xCameraZone)
-            {
-                targetX = player.position.x - xLookAhead;
-                targetXLocked = true;
-            }
+            FindHitPoint();
+            nextHitPointSearchTime =
+                Time.time + hitPointSearchInterval;
         }
 
         float newX = Mathf.SmoothDamp(
@@ -88,14 +70,78 @@ public class CameraFollow : MonoBehaviour
                 transform.position.y,
                 player.position.y,
                 ySmoothSpeed * Time.deltaTime
-                );
+            );
         }
 
         transform.position = new Vector3(
-                newX,
-                newY,
-                transform.position.z
-            );
+            newX,
+            newY,
+            transform.position.z
+        );
+
+        if (shakeTimeRemaining > 0f)
+        {
+            float strength =
+                shakeMagnitude * (shakeTimeRemaining / shakeDuration);
+
+            shakeOffset = UnityEngine.Random.insideUnitCircle * strength;
+            transform.position += shakeOffset;
+
+            shakeTimeRemaining -= Time.deltaTime;
+        }
     }
 
+    void FindHitPoint()
+    {
+        GameObject[] points =
+            GameObject.FindGameObjectsWithTag("HitPoint");
+
+        Transform bestPoint = null;
+        float bestDistance = float.MaxValue;
+
+        foreach (GameObject pointObject in points)
+        {
+            Transform point = pointObject.transform;
+
+            if (point == currentHitPoint)
+                continue;
+
+            if (point.position.y <= player.position.y)
+                continue;
+
+            float distance = Vector2.Distance(
+                player.position,
+                point.position
+            );
+
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                bestPoint = point;
+            }
+        }
+
+        if (currentHitPoint == null)
+        {
+            if (bestPoint != null)
+            {
+                currentHitPoint = bestPoint;
+                targetX = bestPoint.position.x;
+            }
+
+            return;
+        }
+
+        float currentDistance = Vector2.Distance(
+            player.position,
+            currentHitPoint.position
+        );
+
+        if (bestPoint != null &&
+            bestDistance + hitPointSwitchMargin < currentDistance)
+        {
+            currentHitPoint = bestPoint;
+            targetX = bestPoint.position.x;
+        }
+    }
 }
